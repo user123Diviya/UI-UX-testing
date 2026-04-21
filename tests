@@ -1,0 +1,70 @@
+import { test, expect } from '@playwright/test';
+import { getStyle, getWidth, getHeight, getPosition, getBoxModel } from '../utils/styleHelper';
+import { logBug, saveReport } from '../utils/reporter';
+
+async function login(page){
+  await page.goto('https://www.saucedemo.com/');
+  await page.fill('#user-name','standard_user');
+  await page.fill('#password','secret_sauce');
+  await page.click('#login-button');
+  await page.waitForURL('**/inventory.html');
+}
+
+test('Font Check', async ({ page }) => {
+  await login(page);
+  const el = page.locator('.title');
+  const font = parseFloat(await getStyle(el,'font-size'));
+  if(!(font>12 && font<80)) logBug('Font issue',font);
+  expect(font).toBeGreaterThan(12);
+});
+
+test('Width Check', async ({ page }) => {
+  await login(page);
+  const el = page.locator('.inventory_item').first();
+  const width = await getWidth(el);
+  if(width<50) logBug('Width issue',width);
+  expect(width).toBeGreaterThan(50);
+});
+
+test('Height Check', async ({ page }) => {
+  await login(page);
+  const el = page.locator('.inventory_item').first();
+  const height = await getHeight(el);
+  if(height<20) logBug('Height issue',height);
+  expect(height).toBeGreaterThan(20);
+});
+
+test('Box Model Check', async ({ page }) => {
+  await login(page);
+  const el = page.locator('.inventory_item').first();
+  const box = await getBoxModel(el);
+  if(!box.padding) logBug('Padding missing',box);
+  expect(box.padding).not.toBe('');
+});
+
+test('Alignment Check', async ({ page }) => {
+  await login(page);
+  const el1 = page.locator('.inventory_item').nth(0);
+  const el2 = page.locator('.inventory_item').nth(1);
+  const pos1 = await getPosition(el1);
+  const pos2 = await getPosition(el2);
+  if(pos1 && pos2 && Math.abs(pos1.x-pos2.x)>10){
+    logBug('Alignment issue',{x1:pos1.x,x2:pos2.x});
+  }
+  expect(Math.abs(pos1.x-pos2.x)).toBeLessThan(10);
+});
+
+test('Spacing Check', async ({ page }) => {
+  await login(page);
+  const el1 = page.locator('.inventory_item').nth(0);
+  const el2 = page.locator('.inventory_item').nth(1);
+  const pos1 = await getPosition(el1);
+  const pos2 = await getPosition(el2);
+  const gap = pos2.y - (pos1.y + pos1.height);
+  if(gap<0) logBug('Overlap issue',gap);
+  expect(gap).toBeGreaterThanOrEqual(0);
+});
+
+test.afterAll(async ()=>{
+  saveReport();
+});
